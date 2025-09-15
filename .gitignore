@@ -1,0 +1,5 @@
+docker/.env
+docker/airflow_passwords.json
+
+logs/
+*.log
