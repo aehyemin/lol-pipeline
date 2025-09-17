@@ -1,5 +1,8 @@
 docker/.env
-docker/airflow_passwords.json
-
+request.py
+airflow.db
 logs/
 *.log
+.test.py
+
+.env
