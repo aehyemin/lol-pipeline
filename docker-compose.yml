@@ -255,48 +255,162 @@
 #   postgres-db-riot-volume:
 #   airflow-logs:
 
-x-airflow-env: &airflow-env
-  # Airflow 기본
-  AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-  AIRFLOW__FAB__SESSION_BACKEND: database
-  AIRFLOW__CORE__EXECUTOR: LocalExecutor
-  AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-  AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"  # 처음부터 pause 안 되게 (원하면 true로)
-  PYTHONPATH: "/opt/airflow/dags:/opt/airflow/plugins"
 
-  # DB 연결
-  AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
 
-  # Execution API + SDK (403 방지 필수)
-  AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
-  AIRFLOW__API__AUTH_BACKENDS: airflow.api_fastapi.auth.backend.default
-  AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}   # .env 로 주입(세 컨테이너 동일)
-  AIRFLOW__SDK__ENABLE: "true"
-  AIRFLOW__SDK__API_BASE_URL: http://airflow-apiserver:8080
+####################################################################3
 
-  # 선택: 스케줄러 헬스엔드포인트(공식 예시와 동일)
-  AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
 
-  # 필요시 클라우드 크레덴셜/기타
-  AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-  AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-  AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
-  SNOWFLAKE_USER: ${SNOWFLAKE_USER}
-  SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
-  SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
 
+# x-airflow-env: &airflow-env
+#   # Airflow 기본
+#   AIRFLOW__CORE__EXECUTION_API_SERVER_URL: http://airflow-apiserver:8080/execution/
+#   AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
+#   AIRFLOW__FAB__SESSION_BACKEND: database
+#   AIRFLOW__CORE__EXECUTOR: LocalExecutor
+#   AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+#   AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: "false"  # 처음부터 pause 안 되게 (원하면 true로)
+#   PYTHONPATH: "/opt/airflow/dags:/opt/airflow/plugins"
+#   RIOT_API_KEY: ${RIOT_API_KEY}
+#   AIRFLOW__LOGGING__SERVE_LOGS: "true"
+
+#   AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+
+#   # DB 연결
+#   AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+#   # Execution API + SDK (403 방지 필수)
+
+#   AIRFLOW__API__AUTH_BACKENDS: airflow.api_fastapi.auth.backend.default
+
+#   AIRFLOW__WEBSERVER__SECRET_KEY: ${AIRFLOW__WEBSERVER__SECRET_KEY}
+#   AIRFLOW__API__SECRET_KEY: ${AIRFLOW__API__SECRET_KEY}   # .env 로 주입(세 컨테이너 동일)
+#   AIRFLOW__SDK__ENABLE: "true"
+#   AIRFLOW__SDK__API_BASE_URL: http://airflow-apiserver:8080
+  
+#   # 선택: 스케줄러 헬스엔드포인트(공식 예시와 동일)
+#   AIRFLOW__SCHEDULER__ENABLE_HEALTH_CHECK: "true"
+
+#   # 필요시 클라우드 크레덴셜/기타
+#   AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+#   AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+#   AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
+#   SNOWFLAKE_USER: ${SNOWFLAKE_USER}
+#   SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
+#   SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
+
+# x-airflow-common: &airflow-common
+
+#   # 네가 쓰던 커스텀 이미지가 있으면 build 사용,
+#   # 없으면 공식 이미지로 교체: image: apache/airflow:3.0.6
+#   build:
+#     context: ./docker/docker-airflow
+#     dockerfile: Dockerfile
+#   env_file:
+#     - .env
+#   user: "${AIRFLOW_UID}:0"
+#   environment:
+#     <<: *airflow-env
+#   volumes:
+#     - ./dags:/opt/airflow/dags
+#     - ./plugins:/opt/airflow/plugins
+#     - ./logs:/opt/airflow/logs
+
+# services:
+#   postgres:
+#     image: postgres:15
+#     environment:
+#       POSTGRES_USER: ${POSTGRES_USER}
+#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+#       POSTGRES_DB: ${POSTGRES_DB}
+#     volumes:
+#       - postgres-db-riot-volume:/var/lib/postgresql/data
+#     healthcheck:
+#       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
+#       interval: 10s
+#       timeout: 5s
+#       retries: 5
+#     restart: always
+
+#   airflow-init:
+#     <<: *airflow-common
+#     command: bash -lc "
+#       airflow db migrate &&
+#       airflow users create \
+#         --username admin \
+#         --firstname Admin \
+#         --lastname User \
+#         --role Admin \
+#         --email admin@example.com \
+#         --password admin"
+#     depends_on:
+#       postgres:
+#         condition: service_healthy
+#     restart: "no"
+
+
+#   airflow-apiserver:
+#     <<: *airflow-common
+#     command: api-server # Corrected command
+
+#     ports:
+#       - "8081:8080"
+#     healthcheck:
+#       test: ["CMD-SHELL", 'airflow jobs check --job-type ApiServerJob --hostname "$${HOSTNAME}"']
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     depends_on:
+#       airflow-init:
+#         condition: service_completed_successfully
+#     restart: always
+
+
+#   airflow-dag-processor:
+#     <<: *airflow-common
+#     command: dag-processor
+#     healthcheck:
+#       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     depends_on:
+#       airflow-init:
+#         condition: service_completed_successfully
+#     restart: always
+
+
+
+#   airflow-scheduler:
+#     <<: *airflow-common
+#     command: scheduler
+
+#     healthcheck:
+#       test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+#       interval: 30s
+#       timeout: 10s
+#       retries: 5
+#       start_period: 30s
+#     depends_on:
+#       airflow-init:
+#         condition: service_completed_successfully
+#     restart: always
+
+# volumes:
+#   postgres-db-riot-volume:
+#   airflow-logs:
 x-airflow-common: &airflow-common
-
-  # 네가 쓰던 커스텀 이미지가 있으면 build 사용,
-  # 없으면 공식 이미지로 교체: image: apache/airflow:3.0.6
   build:
     context: ./docker/docker-airflow
     dockerfile: Dockerfile
   env_file:
     - .env
-  user: "${AIRFLOW_UID}:0"
+  user: "${AIRFLOW_UID:-50000}:0"
   environment:
-    <<: *airflow-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__CORE__LOAD_EXAMPLES: "false"
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    PYTHONPATH: "/opt/airflow/dags:/opt/airflow/plugins"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./plugins:/opt/airflow/plugins
@@ -310,7 +424,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres-db-riot-volume:/var/lib/postgresql/data
+      - postgres-db-volume:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
       interval: 10s
@@ -320,19 +434,35 @@ services:
 
   airflow-init:
     <<: *airflow-common
-    command: bash -lc "airflow db migrate"
+    user: "0:0"
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        set -euo pipefail
+        echo "[init] wait for DB..."
+        until airflow db check >/dev/null 2>&1; do sleep 3; done
+        airflow db upgrade || airflow db init
+        airflow users create \
+          --username "${_AIRFLOW_WWW_USER_USERNAME:-airflow}" \
+          --firstname Admin --lastname User \
+          --role Admin \
+          --email "${_AIRFLOW_WWW_USER_EMAIL:-airflow@example.com}" \
+          --password "${_AIRFLOW_WWW_USER_PASSWORD:-airflow}" || true
+        airflow pools set riot-api-pool 5 "Riot API rate-limit pool" || true
+        echo "[init] done."
     depends_on:
       postgres:
         condition: service_healthy
     restart: "no"
 
-  airflow-apiserver:
+  airflow-webserver:
     <<: *airflow-common
-    command: api-server # Corrected command
+    command: webserver
     ports:
       - "8081:8080"
     healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type ApiServerJob --hostname "$${HOSTNAME}"']
+      test: ["CMD-SHELL", 'airflow jobs check --job-type WebServerJob --hostname "$${HOSTNAME}"']
       interval: 30s
       timeout: 10s
       retries: 5
@@ -341,40 +471,12 @@ services:
       airflow-init:
         condition: service_completed_successfully
     restart: always
-
-
-  airflow-dag-processor:
-    <<: *airflow-common
-    command: dag-processor
-    environment:
-      AIRFLOW__SDK__ENABLE: "false"
-      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: ""   # 비활성화
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-
-    healthcheck:
-      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
-      interval: 30s
-      timeout: 10s
-      retries: 5
-      start_period: 30s
-    depends_on:
-      airflow-init:
-        condition: service_completed_successfully
-    restart: always
-
-
 
   airflow-scheduler:
     <<: *airflow-common
     command: scheduler
-    environment:
-      AIRFLOW__SDK__ENABLE: "false"
-      AIRFLOW__CORE__EXECUTION_API_SERVER_URL: ""   # 비활성화
-      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-      AIRFLOW__CORE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     healthcheck:
-      test: ["CMD", "curl", "--fail", "http://localhost:8974/health"]
+      test: ["CMD", "airflow", "jobs", "check", "--job-type", "SchedulerJob", "--hostname", "$${HOSTNAME}"]
       interval: 30s
       timeout: 10s
       retries: 5
@@ -384,6 +486,63 @@ services:
         condition: service_completed_successfully
     restart: always
 
+  airflow-dag-processor:
+    <<: *airflow-common
+    command: dag-processor
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+  airflow-triggerer:
+    <<: *airflow-common
+    command: triggerer
+    healthcheck:
+      test: ["CMD-SHELL", 'airflow jobs check --job-type TriggererJob --hostname "$${HOSTNAME}"']
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+  ##여기까지 airflow 관련
+
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+      - SPARK_SUBMIT_OPTS=-Duser.home=/opt/bitnami
+      - SPARK_EXTRA_OPTS=--conf spark.jars.ivy=/opt/bitnami/.ivy2
+
+  
+    ports:
+      - "9090:8080"  
+      - "7077:7077"  
+    volumes:
+      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/data:/opt/bitnami/spark/data
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+
+    
+    depends_on:
+      - spark-master
+
+    volumes:
+      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/data:/opt/bitnami/spark/data
+
+##여기까지 spark 관련
+
+
+##여기까지 kafka 관련
+
 volumes:
-  postgres-db-riot-volume:
-  airflow-logs:
+  postgres-db-volume:
+
