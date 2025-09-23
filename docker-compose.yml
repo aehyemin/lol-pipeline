@@ -10,10 +10,14 @@ x-airflow-common: &airflow-common
     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
     AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
     PYTHONPATH: "/opt/airflow/dags:/opt/airflow/plugins"
+    # AIRFLOW_CONN_SPARK_DEFAULT: "spark://spark-master:7077"
+
+    AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
   volumes:
     - ./dags:/opt/airflow/dags
     - ./plugins:/opt/airflow/plugins
     - ./logs:/opt/airflow/logs
+    - ./spark/apps:/opt/airflow/jobs  
 
 services:
   postgres:
@@ -109,7 +113,7 @@ services:
 
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.1
     env_file:  
       - .env 
     environment:
@@ -121,11 +125,18 @@ services:
       - "9090:8080"  
       - "7077:7077"  
     volumes:
-      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/apps:/opt/airflow/jobs
       - ./spark/data:/opt/bitnami/spark/data
 
+    restart: unless-stopped     
+    healthcheck:                  
+      test: ["CMD", "curl", "-f", "http://localhost:8080"] 
+      interval: 30s
+      timeout: 5s
+      retries: 5
+
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.1
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
@@ -135,7 +146,7 @@ services:
       - spark-master
 
     volumes:
-      - ./spark/apps:/opt/bitnami/spark/apps
+      - ./spark/apps:/opt/airflow/jobs
       - ./spark/data:/opt/bitnami/spark/data
 
 ##여기까지 spark 관련

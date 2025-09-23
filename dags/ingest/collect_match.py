@@ -25,7 +25,7 @@ from datetime import timezone
 
 #api 요청
 
-def request_riot_api(url:str, max_retries=2, backoff_factor: float = 0.5):
+def request_riot_api(url:str, max_retries=1, backoff_factor: float = 0.5):
     api_key = os.getenv("RIOT_API_KEY") 
     headers = {"X-Riot-Token": api_key}
     for i in range(max_retries):

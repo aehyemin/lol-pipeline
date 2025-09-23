@@ -1,6 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
-
+from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 import pendulum
 from datetime import timedelta
 import os
@@ -8,25 +8,24 @@ from ingest.collect_match import (
     get_summoners_puuid,
     get_matchid_by_puuid,
     run_riot_pipeline,  
-    request_riot_api
+
 )
 default_args = {
     "retries": 1, 
     "retry_delay": timedelta(minutes=1),
-    "depends_on_past": False,
-    "email_on_failure": False,
-    "email_on_retry": False,
+
 }
 with DAG(
 
-    dag_id="riot_ingest_daily",
-    start_date=pendulum.datetime(2025, 4, 21, tz="UTC"),
+    dag_id="riot_ingest_daily_and_json_to_parquet",
+    start_date=pendulum.datetime(2025, 4, 23, tz="UTC"),
     schedule="0 17 * * *",
     catchup=False, 
     max_active_runs=1,
     render_template_as_native_obj=True,
     default_args=default_args,
     tags=["ingest", "riot-api", "toS3"],
+
 ) as dag:
 
 
@@ -56,6 +55,30 @@ with DAG(
         pool="riot-api-pool",
     )
 
-    
 
-    task_get_puuids >> task_get_matchid_by_puuid >> task_run_riot_pipeline
+    task_spark_transform_json_to_parquet = SparkSubmitOperator(
+        task_id="spark_transform_json_to_parquet",
+        conn_id="spark_conn",
+        application="/opt/airflow/jobs/spark_transform_player.py",
+        packages="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
+        application_args=[
+
+            "--input", "s3a://my-riot-ml-pipeline-project/raw/match/ds={{ds}}/*.json",
+            "--output", "s3a://my-riot-ml-pipeline-project/staging/match_player_stats",
+            "--ds", "{{ ds }}"
+        ],
+         conf={
+            "spark.sql.sources.partitionOverwriteMode": "dynamic",
+            "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+            "spark.hadoop.fs.s3a.aws.credentials.provider": "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+        }
+)
+
+
+
+(
+    task_get_puuids >>
+    task_get_matchid_by_puuid >>
+    task_run_riot_pipeline >> 
+    task_spark_transform_json_to_parquet
+)

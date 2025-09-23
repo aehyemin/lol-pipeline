@@ -1,27 +1,24 @@
-from datetime import datetime, timezone, timedelta
+import pandas as pd
 
-# 1. 주어진 밀리초 타임스탬프 (Riot API에서 받은 값)
-game_end_timestamp_ms = 1757169398692
+# ◀◀ pandas가 더 많은 행과 열을 보여주도록 옵션 설정
+pd.set_option('display.max_rows', 15)       # 최대 50줄까지 표시
+pd.set_option('display.max_columns', None)  # ◀◀ 모든 컬럼을 표시하도록 설정
+pd.set_option('display.width', 1000)        # ◀◀ 한 줄의 너비를 넓게 설정하여 줄바꿈 방지
 
-# 2. 초(second) 단위 타임스탬프로 변환 (밀리초 값을 1000으로 나눔)
-#    파이썬의 datetime.fromtimestamp 함수는 초 단위로 작동하기 때문입니다.
-timestamp_in_seconds = game_end_timestamp_ms / 1000
+# S3 경로를 폴더까지만 지정하면 Spark가 저장한 모든 part- 파일을 알아서 읽어옵니다.
+s3_path = "s3://my-riot-ml-pipeline-project/staging/match_player_stats/ds=2025-09-22/"
 
-# 3. UTC(협정 세계시) 기준으로 날짜/시간 객체 생성
-#    - 모든 타임스탬프는 기본적으로 UTC 기준입니다.
-datetime_utc = datetime.fromtimestamp(timestamp_in_seconds, tz=timezone.utc)
+try:
+    # s3fs를 사용하여 S3 경로의 파케이 파일을 바로 DataFrame으로 읽기
+    df = pd.read_parquet(s3_path)
 
-# 4. 한국 시간(KST, UTC+9)으로 변환
-#    - UTC 시간에 9시간을 더해 한국 시간대를 만듭니다.
-kst_timezone = timezone(timedelta(hours=9))
-datetime_kst = datetime_utc.astimezone(kst_timezone)
+    print("### 데이터 확인 (14줄, 모든 컬럼) ###")
+    print(df.head(14))
 
-# 5. 보기 좋은 형식으로 결과 출력
-print(f"Original Millisecond Timestamp: {game_end_timestamp_ms}")
-print("-" * 40)
-print(f"UTC (Coordinated Universal Time): {datetime_utc.strftime('%Y-%m-%d %H:%M:%S %Z')}")
-print(f"KST (Korean Standard Time):     {datetime_kst.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+    print("\n### 데이터 구조 (스키마) ###")
+    df.info()
 
-# "날짜"만 YYYY-MM-DD 형식으로 추출하고 싶을 경우
-date_only_kst = datetime_kst.strftime('%Y-%m-%d')
-print(f"KST Date Only:                    {date_only_kst}")
+    print(f"\n총 {len(df)}개의 행이 성공적으로 로드되었습니다.")
+
+except Exception as e:
+    print(f"데이터를 읽는 중 오류가 발생했습니다: {e}")
