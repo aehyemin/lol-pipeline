@@ -1,5 +1,6 @@
 from airflow import DAG
 from airflow.operators.python import PythonOperator
+from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 import pendulum
 from datetime import timedelta
@@ -75,10 +76,33 @@ with DAG(
 )
 
 
+    task_copy_into_snowflake_raw = SnowflakeOperator(
+        task_id="copy_into_snowflake_raw",
+        snowflake_conn_id="snowflake_conn",
+        sql="""
+            DELETE FROM RIOT_DB.RAW.MPS_RAW WHERE ds = TO_DATE('{{ ds }}', 'YYYY-MM-DD');
+
+            COPY INTO RIOT_DB.RAW.MPS_RAW (v, ds)
+            FROM (
+                SELECT 
+                $1,
+                TO_DATE(
+                        SPLIT_PART(SPLIT_PART(METADATA$FILENAME, 'ds=', 2), '/', 1),
+                        'YYYY-MM-DD'
+                    ) AS ds
+                FROM @RIOT_DB.STAGING.STG_RIOT/ds={{ ds }}/
+            )
+            FILE_FORMAT=(FORMAT_NAME='RIOT_DB.STAGING.FF_PARQUET')
+            ON_ERROR='ABORT_STATEMENT';
+        """
+        )
+    
+
 
 (
     task_get_puuids >>
     task_get_matchid_by_puuid >>
     task_run_riot_pipeline >> 
-    task_spark_transform_json_to_parquet
+    task_spark_transform_json_to_parquet >>
+    task_copy_into_snowflake_raw
 )
