@@ -34,13 +34,16 @@ def load_data_from_snowflake():
 
 
 #라벨 추가, 모델 학습, shap분석
-def analyze_model_indi(df: pd.DataFrame, top_n=8, samples=300):
+def analyze_model_indi(df: pd.DataFrame, top_n=3, samples=300):
     df["TEAMPOSITION"] = df["TEAMPOSITION"].astype('category') #범주형으로 바꿔줌
     feature_except = [
         "DS", "MATCHID", "TEAMID", "PARTICIPANTID", "GAMEDURATION",
         "WIN",  
         "TOP_LABEL", "JUNGLE_LABEL", "MID_LABEL", "ADC_LABEL", "SUP_LABEL", "kills", 
-        "KILLS", "ASSISTS", "DEATHS", "KDA"
+        "KILLS", "ASSISTS", "DEATHS",
+        "TOTALMINIONSKILLED", "TOTALDAMAGEDEALTTOCHAMPIONS", "GOLDEARNED",
+        "TOTALDAMAGETAKEN",
+        "TOTALTIMECCDEALT"
     ]
     features = [col for col in df.columns if col not in feature_except]
 
@@ -92,11 +95,26 @@ def analyze_model_indi(df: pd.DataFrame, top_n=8, samples=300):
         top_feature = importance_df.head(top_n)["feature"].tolist()
         key_feature[pos] = top_feature
 
+
+
+        shap.summary_plot(shap_values, x_test, plot_type="bar", show=False )
+        plt.title(f"{pos} importance")
+        plt.savefig(f"shap_{pos}.png", bbox_inches='tight')
+        plt.close()
+        print("그래프")
+
+
+
+
+
+
+
+
     return key_feature
     
 if __name__ == "__main__":
     player_stats_df = load_data_from_snowflake()
-    important_features = analyze_model_indi(player_stats_df, top_n=8)
+    important_features = analyze_model_indi(player_stats_df, top_n=3)
     print("핵심 피처")
     for pos, feats in important_features.items():
         print(f"{pos}: {feats}")
