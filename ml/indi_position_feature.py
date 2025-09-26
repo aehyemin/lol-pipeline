@@ -33,25 +33,38 @@ def load_data_from_snowflake():
     return df
 
 
-#모델 학습, shap분석
+#라벨 추가, 모델 학습, shap분석
 def analyze_model_indi(df: pd.DataFrame, top_n=10, samples=300):
     df["TEAMPOSITION"] = df["TEAMPOSITION"].astype('category') #범주형으로 바꿔줌
-    feature_except = ['DS', "MATCHID", "TEAMID", "PARTICIPANTID", "WIN"]
+    feature_except = [
+        "DS", "MATCHID", "TEAMID", "PARTICIPANTID", "GAMEDURATION",
+        "WIN",  
+        "TOP_LABEL", "JUNGLE_LABEL", "MID_LABEL", "ADC_LABEL", "SUP_LABEL", "kills", 
+        "KILLS", "ASSISTS", "DEATHS" 
+    ]
     features = [col for col in df.columns if col not in feature_except]
 
+    position_to_label = {
+        "TOP": "TOP_LABEL",
+        "JUNGLE": "JUNGLE_LABEL",
+        "MIDDLE": "MID_LABEL",
+        "BOTTOM": "ADC_LABEL",
+        "UTILITY": "SUP_LABEL"
+    }
+
     key_feature = {}
-    positions = df["TEAMPOSITION"].cat.categories
 
+    for pos, label_col in position_to_label.items():
+        print(f"{pos} len {len(df[df['TEAMPOSITION'] == pos])}")
 
-    for pos in positions:
-        print(f"--- {pos} 처리 중, 샘플 수 = {len(df[df['TEAMPOSITION'] == pos])}")
         df_pos = df[df["TEAMPOSITION"] == pos]
+
         if len(df_pos) < samples:
             print("샘플 값이 모자람")
             continue
          
-        x = df[features]
-        y = df["WIN"]
+        x = df_pos[features]
+        y = df_pos[label_col]
 
         x_train, x_test, y_train, y_test = train_test_split(
             x,y, test_size=0.2, random_state=29)
@@ -63,6 +76,9 @@ def analyze_model_indi(df: pd.DataFrame, top_n=10, samples=300):
         #shap
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(x_test) #기여도가 담긴 배열
+
+        if isinstance(shap_values, list):
+            shap_values = shap_values[1]
 
         print("SHAP shape", shap_values.shape)
 
