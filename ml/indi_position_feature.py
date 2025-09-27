@@ -23,27 +23,28 @@ def load_data_from_snowflake():
         schema="MART"
     )
     query = """
-        SELECT * FROM RIOT_DB.MART.VIEW_PLAYER_FEATURE
+        SELECT * FROM RIOT_DB.MART.VIEW_PLAYER_FEATURE_B
         WHERE DS >= DATEADD(day, -90, CURRENT_DATE)
         """
     df = pd.read_sql(query, conn)
+    print(df.columns)
     conn.close()
     df.columns = [col.upper() for col in df.columns]
+    df["TEAMPOSITION"] = df["TEAMPOSITION"].str.upper()
+
     df.dropna(inplace=True)
     return df
+
 
 
 #라벨 추가, 모델 학습, shap분석
 def analyze_model_indi(df: pd.DataFrame, top_n=3, samples=300):
     df["TEAMPOSITION"] = df["TEAMPOSITION"].astype('category') #범주형으로 바꿔줌
     feature_except = [
-        "DS", "MATCHID", "TEAMID", "PARTICIPANTID", "GAMEDURATION",
-        "WIN",  
-        "TOP_LABEL", "JUNGLE_LABEL", "MID_LABEL", "ADC_LABEL", "SUP_LABEL", "kills", 
-        "KILLS", "ASSISTS", "DEATHS",
-        "TOTALMINIONSKILLED", "TOTALDAMAGEDEALTTOCHAMPIONS", "GOLDEARNED",
-        "TOTALDAMAGETAKEN",
-        "TOTALTIMECCDEALT"
+        "DS", "MATCHID", "TEAMID", "PARTICIPANTID",
+        "WIN",
+        "TOP_LABEL", "JUNGLE_LABEL", "MID_LABEL", "ADC_LABEL", "SUP_LABEL",
+        "TEAMPOSITION"
     ]
     features = [col for col in df.columns if col not in feature_except]
 
@@ -84,6 +85,7 @@ def analyze_model_indi(df: pd.DataFrame, top_n=3, samples=300):
             shap_values = shap_values[1]
 
         print("SHAP shape", shap_values.shape)
+        
 
 
         shap_importance = np.abs(shap_values).mean(axis=0)
@@ -97,11 +99,11 @@ def analyze_model_indi(df: pd.DataFrame, top_n=3, samples=300):
 
 
 
-        shap.summary_plot(shap_values, x_test, plot_type="bar", show=False )
-        plt.title(f"{pos} importance")
-        plt.savefig(f"shap_{pos}.png", bbox_inches='tight')
+        # SHAP summary scatter (방향 + 색상으로 확인)
+        shap.summary_plot(shap_values, x_test, plot_type="dot", show=False)
+        plt.title(f"{pos} SHAP summary (dot)")
+        plt.savefig(f"shap_{pos}_dot.png", bbox_inches="tight")
         plt.close()
-        print("그래프")
 
 
 
@@ -114,7 +116,9 @@ def analyze_model_indi(df: pd.DataFrame, top_n=3, samples=300):
     
 if __name__ == "__main__":
     player_stats_df = load_data_from_snowflake()
+    print(player_stats_df["TEAMPOSITION"].unique())
+
+    player_stats_df["TEAMPOSITION"] = player_stats_df["TEAMPOSITION"].str.upper() 
     important_features = analyze_model_indi(player_stats_df, top_n=3)
-    print("핵심 피처")
     for pos, feats in important_features.items():
         print(f"{pos}: {feats}")
