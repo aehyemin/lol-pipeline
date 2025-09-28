@@ -18,6 +18,7 @@ x-airflow-common: &airflow-common
     - ./plugins:/opt/airflow/plugins
     - ./logs:/opt/airflow/logs
     - ./spark/apps:/opt/airflow/jobs  
+    - ./ml:/opt/airflow/ml
 
 services:
   postgres:

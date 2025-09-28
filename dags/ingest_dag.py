@@ -1,10 +1,14 @@
 from airflow import DAG
+from airflow.providers.amazon.aws.operators.sagemaker import SageMakerTrainingOperator
 from airflow.operators.python import PythonOperator
 from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 import pendulum
 from datetime import timedelta
+
 import os
+from package_sm_code1 import package_and_upload
+
 from ingest.collect_match import (
     get_summoners_puuid,
     get_matchid_by_puuid,
@@ -97,6 +101,40 @@ with DAG(
         """
         )
     
+    task_package_sm_code = PythonOperator(
+        task_id="package_sm_code",
+        python_callable=package_and_upload,
+        )
+    
+
+    SKLEARN_IMAGE = "366743142698.dkr.ecr.ap-northeast-2.amazonaws.com/sagemaker-scikit-learn:1.2-1"
+
+
+    ROLE_ARN      = "arn:aws:iam::174919262157:role/riot-pipeline-role"
+    S3_ARTIFACTS  = "s3://my-riot-ml-pipeline-project/sm-artifacts/"
+    
+    task_sm_train_model = SageMakerTrainingOperator(
+        task_id ="sm_train_model",
+        aws_conn_id="aws_default",
+        wait_for_completion=True,
+        check_interval=30,
+        config={
+            "TrainingJobName": "riot-train-{{ ds_nodash }}",
+            "RoleArn": ROLE_ARN,
+            "AlgorithmSpecification": {
+                "TrainingImage": SKLEARN_IMAGE,
+                "TrainingInputMode": "File",
+            },
+            "OutputDataConfig": {"S3OutputPath": S3_ARTIFACTS},
+            "ResourceConfig": {"InstanceType": "ml.m5.large", "InstanceCount": 1, "VolumeSizeInGB": 30},
+            "StoppingCondition": {"MaxRuntimeInSeconds": 3600},
+            "HyperParameters": {
+                "sagemaker_program": "sm_train.py",
+                "sagemaker_submit_directory": "{{ ti.xcom_pull(task_ids='package_sm_code') or var.value.SM_CODE_URI }}",
+                "secret-name": "riot/snowflake/train",
+        },
+    },
+)
 
 
 (
@@ -104,5 +142,9 @@ with DAG(
     task_get_matchid_by_puuid >>
     task_run_riot_pipeline >> 
     task_spark_transform_json_to_parquet >>
-    task_copy_into_snowflake_raw
+    task_copy_into_snowflake_raw >>
+    task_package_sm_code >>
+    task_sm_train_model
+    
+
 )

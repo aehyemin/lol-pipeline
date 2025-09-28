@@ -1,0 +1,6 @@
+pandas
+lightgbm
+snowflake-connector-python
+scikit-learn
+joblib
+pyarrow
