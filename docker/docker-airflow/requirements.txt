@@ -6,3 +6,4 @@ snowflake-connector-python
 requests
 boto3
 apache-airflow-providers-apache-spark
+shap

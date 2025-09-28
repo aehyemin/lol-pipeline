@@ -5,8 +5,8 @@ from airflow.providers.snowflake.operators.snowflake import SnowflakeOperator
 from airflow.providers.apache.spark.operators.spark_submit import SparkSubmitOperator
 import pendulum
 from datetime import timedelta
+from role_influence_contrib import compute_role_contrib
 
-import os
 from package_sm_code1 import package_and_upload
 
 from ingest.collect_match import (
@@ -135,6 +135,19 @@ with DAG(
         },
     },
 )
+    
+
+    task_role_contrib = PythonOperator(
+        task_id="compute_role_contrib",
+        python_callable=compute_role_contrib,
+        op_kwargs={
+            "ds": "{{ ds }}",
+            
+            "model_artifact_s3": "{{ (ti.xcom_pull(task_ids='sm_train_model', include_prior_dates=True) or {}).get('ModelArtifacts', {}).get('S3ModelArtifacts') or (var.value.SM_MODEL_URI | default('', true)) }}",
+    
+    },
+    )
+
 
 
 (
@@ -144,7 +157,8 @@ with DAG(
     task_spark_transform_json_to_parquet >>
     task_copy_into_snowflake_raw >>
     task_package_sm_code >>
-    task_sm_train_model
+    task_sm_train_model >>
+    task_role_contrib
     
 
 )
