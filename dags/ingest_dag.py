@@ -69,7 +69,7 @@ with DAG(
         pool="riot-api-pool", #
     )
 
-    task_spark_transfrom_timeline_gold = SparkSubmitOperator(
+    task_spark_transform_timeline_gold = SparkSubmitOperator(
         task_id="spark_transfrom_timeline_gold",
         conn_id="spark_conn",
         application="/opt/airflow/jobs/transform_timeline_gold.py",
@@ -184,4 +184,4 @@ task_run_riot_pipeline >> task_spark_transform_json_to_parquet \
 >> task_sm_train_model >> task_role_contrib
 
 
-task_get_timeline_data >> task_spark_transfrom_timeline_gold
+task_get_timeline_data >> task_spark_transform_timeline_gold
