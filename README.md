@@ -72,7 +72,7 @@
 
 
 
-##사용 스택
+## 사용 스택
 
 - **Data Engineering**: Apache Airflow, Apache Spark, Snowflake, AWS S3  
 - **ML / MLOps**: AWS SageMaker, SHAP, LightGBM, Scikit-learn  

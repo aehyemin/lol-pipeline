@@ -20,6 +20,7 @@ x-airflow-common: &airflow-common
     - ./logs:/opt/airflow/logs
     - ./spark/apps:/opt/airflow/jobs  
     - ./ml:/opt/airflow/ml
+    - ./producer:/opt/airflow/producer
 
 services:
   postgres:
@@ -129,7 +130,7 @@ services:
       - "9090:8080"  
       - "7077:7077"  
     volumes:
-      - ./spark/apps:/opt/airflow/jobs
+      - ./spark/apps:/opt/bitnami/spark/apps
       - ./spark/data:/opt/bitnami/spark/data
 
     restart: unless-stopped     
@@ -152,167 +153,46 @@ services:
       - spark-master
 
     volumes:
-      - ./spark/apps:/opt/airflow/jobs
+      - ./spark/apps:/opt/bitnami/spark/apps
       - ./spark/data:/opt/bitnami/spark/data
 
 ##여기까지 spark 관련
+
+  kafka:
+    image: confluentinc/cp-kafka:latest
+    ports:
+      - "29092:29092" 
+
+    environment:
+      - KAFKA_KRAFT_MODE=true
+      - KAFKA_NODE_ID=1
+      - KAFKA_PROCESS_ROLES=broker,controller
+
+      - KAFKA_LISTENERS=INTERNAL://:19092,EXTERNAL://:29092,CONTROLLER://:9093
+
+      - KAFKA_ADVERTISED_LISTENERS=INTERNAL://:kafka:19092,EXTERNAL://localhost:29092
+      - KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=INTERNAL:PLAINTEXT,EXTERNAL:PLAINTEXT,CONTROLLER:PLAINTEXT
+      - KAFKA_INTER_BROKER_LISTENER_NAME=INTERNAL
+      - KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER
+      - KAFKA_CONTROLLER_QUORUM_VOTERS=1@kafka:9093
+
+      - KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1
+      - KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1
+      - KAFKA_AUTO_CREATE_TOPICS_ENABLE=true
+      - CLUSTER_ID=_22lvlHrTBakAb2cDmi4hA
+
+    volumes:
+      - kafka-data:/var/lib/kafka/data
+
+
+
 
 
 ##여기까지 kafka 관련
 
 volumes:
   postgres-db-volume:
-
-
-
-
-
-
-# x-airflow-common: &airflow-common
-#   build: 
-#     context: ./docker/docker-airflow
-#     dockerfile: Dockerfile
-#   env_file: 
-#    - .env
-#   user: "${AIRFLOW_UID}:0"
-#   environment:
-#     AIRFLOW__CORE__AUTH_MANAGER: airflow.providers.fab.auth_manager.fab_auth_manager.FabAuthManager
-#     AIRFLOW__FAB__SESSION_BACKEND: database
-#     AIRFLOW__CORE__EXECUTOR: LocalExecutor
-#     AIRFLOW__CORE__LOAD_EXAMPLES: "false"
-#     AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
-#     AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
-#     AWS_DEFAULT_REGION: ${AWS_DEFAULT_REGION}
-#     SNOWFLAKE_USER: ${SNOWFLAKE_USER}
-#     SNOWFLAKE_PASSWORD: ${SNOWFLAKE_PASSWORD}
-#     SNOWFLAKE_ACCOUNT: ${SNOWFLAKE_ACCOUNT}
-#     PYTHONPATH: "/opt/airflow/dags:/opt/airflow/plugins"
-#     AIRFLOW__SCHEDULER__WORKER_ENABLE_API: "true"
-#     AIRFLOW__SCHEDULER__WORKER_API_HOST: "127.0.0.1"
-#     AIRFLOW__SCHEDULER__WORKER_API_PORT: "8793"
-#     AIRFLOW__SDK__API_BASE_URL: http://airflow-apiserver:8080
-#     AIRFLOW__SDK__ENABLE: "true"
-
-
-
-#   volumes:
-#     - ./dags:/opt/airflow/dags
-#     - ./plugins:/opt/airflow/plugins
-#     - ./logs:/opt/airflow/logs
-
-
-# services:
-#   postgres:
-#     image: postgres:15
-#     environment:
-#       POSTGRES_USER: ${POSTGRES_USER}
-#       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-#       POSTGRES_DB: ${POSTGRES_DB}
-#     volumes:
-#       - postgres-db-riot-volume:/var/lib/postgresql/data
-#     healthcheck:
-#       test: ["CMD", "pg_isready", "-U", "${POSTGRES_USER}", "-d", "${POSTGRES_DB}"]
-
-#     restart: always
-
-#   airflow-init:
-#     <<: *airflow-common
-#     user: "0:0"
-#     environment:
-     
-#       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-#     depends_on:
-#       postgres:
-#         condition: service_healthy
-#     command: bash -c "airflow db migrate"
-#     restart: "no"
-
-#   airflow-apiserver:
-#     <<: *airflow-common
-#     command: api-server
-#     environment:
-#       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-#     ports:
-#       - "8081:8080"
-#     healthcheck:
-#       test: ["CMD-SHELL", 'airflow jobs check --job-type ApiServerJob --hostname "$${HOSTNAME}"']
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 30s
-#     restart: always
-
-#     depends_on:
-#       airflow-init:
-#         condition: service_completed_successfully
-      
-
-#   airflow-dag-processor:
-#     <<: *airflow-common
-#     command: dag-processor
-#     environment:
-#       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-#     healthcheck:
-#       test: ["CMD-SHELL", 'airflow jobs check --job-type DagProcessorJob --hostname "$${HOSTNAME}"']
-#       interval: 30s
-#       timeout: 10s
-#       retries: 5
-#       start_period: 30s
-#     restart: always
-#     depends_on:
-#       airflow-init:
-#         condition: service_completed_successfully
-
-#   airflow-scheduler:
-#     <<: *airflow-common
-#     command: scheduler
-#     environment:
-#       AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
-#     depends_on:
-#       airflow-init:
-#         condition: service_completed_successfully
-##여기까지 airflow 관련
-
-
-  # spark-master:
-  #   image: bitnami/spark:3.5
-  #   environment:
-  #     SPARK_MODE: master
-  #     SPARK_SUBMIT_OPTS: -Duser.home=/opt/bitnami
-  #     SPARK_EXTRA_OPTS: --conf spark.jars.ivy=/opt/bitnami/.ivy2
-
-  
-  #   ports:
-  #     - "9090:8080"  
-  #     - "7077:7077"  
-
-  #   volumes:
-  #     - ./spark/apps:/opt/bitnami/spark/apps
-  #     - ./spark/data:/opt/bitnami/spark/data
-
-  # spark-worker:
-  #   image: bitnami/spark:3.5
-  #   environment:
-  #     SPARK_MODE: worker
-  #     SPARK_MASTER_URL: spark://spark-master:7077
-
-    
-  #   depends_on:
-  #     - spark-master
-
-  #   volumes:
-  #     - ./spark/apps:/opt/bitnami/spark/apps
-  #     - ./spark/data:/opt/bitnami/spark/data
-
-##여기까지 spark 관련
-
-
-##여기까지 kafka 관련
-
-# volumes:
-#   postgres-db-riot-volume:
-#   airflow-logs:
-
-
+  kafka-data:
 
 
