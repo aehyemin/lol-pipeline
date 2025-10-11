@@ -13,7 +13,7 @@ from ingest.collect_match import (
     get_summoners_puuid,
     get_matchid_by_puuid,
     run_riot_pipeline,  
-
+    get_timeline_by_matchid,
 )
 default_args = {
     "retries": 1, 
@@ -60,6 +60,33 @@ with DAG(
         pool="riot-api-pool",
     )
 
+
+############################################################################
+    task_get_timeline_data = PythonOperator(
+        task_id="get_timeline_data",
+        python_callable=get_timeline_by_matchid,
+        op_kwargs={"match_ids": "{{ti.xcom_pull(task_ids='get_matchid_by_puuid')}}"},
+        pool="riot-api-pool", #
+    )
+
+    task_spark_transfrom_timeline_gold = SparkSubmitOperator(
+        task_id="spark_transfrom_timeline_gold",
+        conn_id="spark_conn",
+        application="/opt/airflow/jobs/transform_timeline_gold.py",
+        packages="org.apache.hadoop:hadoop-aws:3.3.4,com.amazonaws:aws-java-sdk-bundle:1.12.262",
+        application_args=[
+
+            "--input", "s3a://my-riot-ml-pipeline-project/raw/match_timeline/ds={{ds}}/*.json",
+            "--output", "s3a://my-riot-ml-pipeline-project/staging/gold_diffs/ds={{ds}}/",
+        ],
+        conf={
+            "spark.sql.sources.partitionOverwriteMode": "dynamic",
+            "spark.hadoop.fs.s3a.impl": "org.apache.hadoop.fs.s3a.S3AFileSystem",
+            "spark.hadoop.fs.s3a.aws.credentials.provider": "org.apache.hadoop.fs.s3a.SimpleAWSCredentialsProvider",
+        }
+)
+
+##################################################################
 
     task_spark_transform_json_to_parquet = SparkSubmitOperator(
         task_id="spark_transform_json_to_parquet",
@@ -148,17 +175,13 @@ with DAG(
     },
     )
 
+task_get_puuids >> task_get_matchid_by_puuid
+task_get_matchid_by_puuid >> [task_run_riot_pipeline, task_get_timeline_data]
 
 
-(
-    task_get_puuids >>
-    task_get_matchid_by_puuid >>
-    task_run_riot_pipeline >> 
-    task_spark_transform_json_to_parquet >>
-    task_copy_into_snowflake_raw >>
-    task_package_sm_code >>
-    task_sm_train_model >>
-    task_role_contrib
-    
+task_run_riot_pipeline >> task_spark_transform_json_to_parquet \
+>> task_copy_into_snowflake_raw >> task_package_sm_code \
+>> task_sm_train_model >> task_role_contrib
 
-)
+
+task_get_timeline_data >> task_spark_transfrom_timeline_gold

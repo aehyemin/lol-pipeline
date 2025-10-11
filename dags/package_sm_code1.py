@@ -1,8 +1,6 @@
 #sagemaker는 로컬 pc의 파일을 읽을 수 없기 때문에,
 #s3에 업로드된 압출 파일을 가져가서 사용한다. 이 과정을 airflow가 자동으로 처리하도록
 
-
-
 import os, tarfile, boto3, time
 
 

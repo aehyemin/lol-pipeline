@@ -147,3 +147,31 @@ def run_riot_pipeline(match_ids: list, **kwargs):
         time.sleep(1.2)
     print(f"success upload to s3 {upload_success}")
 
+
+
+################################timeline###############################
+def get_timeline_by_matchid(match_ids: list, **context):
+    bucket = os.getenv("AWS_S3_BUCKET")
+    region = os.getenv("AWS_DEFAULT_REGION")
+    s3 = boto3.client("s3", region_name=region)  
+    ds = context["ds"]
+    
+    success_cnt = 0
+    for match_id in match_ids:
+        timeline_data = request_riot_api(f"https://asia.api.riotgames.com/lol/match/v5/matches/{match_id}/timeline")
+    
+        if timeline_data:
+            try:
+                key = f"raw/match_timeline/ds={ds}/{match_id}.json"
+
+                s3.put_object(
+                            Bucket=bucket, Key=key,
+                            Body=json.dumps(timeline_data),
+                            ContentType="application/json"
+                            )
+                print(f"Uploaded to timeline data to s3://{bucket}/{key}")
+                success_cnt += 1
+            except Exception as e:
+                print(f"timeline failed !!")
+            time.sleep(1.2)
+    print(f"finish {success_cnt}/{len(match_ids)}")

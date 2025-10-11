@@ -13,6 +13,7 @@ x-airflow-common: &airflow-common
     # AIRFLOW_CONN_SPARK_DEFAULT: "spark://spark-master:7077"
 
     AIRFLOW__CORE__FERNET_KEY: ${AIRFLOW__CORE__FERNET_KEY}
+    AIRFLOW__SCHEDULER__STANDALONE_DAG_PROCESSOR: "true"
   volumes:
     - ./dags:/opt/airflow/dags
     - ./plugins:/opt/airflow/plugins
@@ -121,6 +122,8 @@ services:
       - SPARK_MODE=master
       - SPARK_SUBMIT_OPTS=-Duser.home=/opt/bitnami
       - SPARK_EXTRA_OPTS=--conf spark.jars.ivy=/opt/bitnami/.ivy2
+      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3
 
     ports:
       - "9090:8080"  
@@ -141,6 +144,8 @@ services:
     environment:
       - SPARK_MODE=worker
       - SPARK_MASTER_URL=spark://spark-master:7077
+      - PYSPARK_PYTHON=/opt/bitnami/python/bin/python3
+      - PYSPARK_DRIVER_PYTHON=/opt/bitnami/python/bin/python3
 
     
     depends_on:
