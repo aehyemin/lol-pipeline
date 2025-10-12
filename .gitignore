@@ -8,3 +8,14 @@ logs/
 .env
 
 __pycache__
+
+
+
+spark/data/sink/
+spark/data/checkpoints/
+**/_spark_metadata/
+**/*.crc
+**/_SUCCESS
+
+data/**
+!data/sample/*
