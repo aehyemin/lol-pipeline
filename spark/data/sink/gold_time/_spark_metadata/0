@@ -1,0 +1,3 @@
+v1
+{"path":"file:///opt/bitnami/spark/data/sink/gold_time/matchId=__HIVE_DEFAULT_PARTITION__/part-00000-edb3f953-3955-4c35-a32b-29c443e881ea.c000.snappy.parquet","size":1657,"isDir":false,"modificationTime":1760249099067,"blockReplication":1,"blockSize":33554432,"action":"add"}
+{"path":"file:///opt/bitnami/spark/data/sink/gold_time/matchId=KR_7841426469/part-00000-4107161d-ca7f-4d61-8a84-573175841dec.c000.snappy.parquet","size":3679,"isDir":false,"modificationTime":1760249099093,"blockReplication":1,"blockSize":33554432,"action":"add"}

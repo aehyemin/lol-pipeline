@@ -1,0 +1,2 @@
+v1
+{"path":"file:///opt/bitnami/spark/data/sink/gold_time/matchId=KR_7841426469/part-00000-d7c76b83-51e7-453d-9863-711fd450325e.c000.snappy.parquet","size":2292,"isDir":false,"modificationTime":1760249215629,"blockReplication":1,"blockSize":33554432,"action":"add"}
