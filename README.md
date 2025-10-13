@@ -70,11 +70,22 @@
 
 ---
 
+## 기술 심화: 실시간 골드 격차 처리 및 시각화 파이프라인
+
+- 실시간 데이터 스트리밍 아키텍처 설계 :실제 LoL경기 타임라인 JSON 데이터를 일정 속도로 Kafka 토픽에 전송
+- Kafka & Spark Structured Streaming을 활용한 실시간 집계
+- Streamlit 기반 실시간 시각화 대시보드 구현
+
+
+
+  <img width="802" height="804" alt="Screenshot from 2025-10-13 21-59-35" src="https://github.com/user-attachments/assets/8df8c085-aa3e-4f62-ad6e-9f5b91c21b9f" />
 
 
 ## 사용 스택
 
-- **Data Engineering**: Apache Airflow, Apache Spark, Snowflake, AWS S3  
+- **Data Engineering**: Apache Airflow, Apache Spark, Kafka, Snowflake, AWS S3  
 - **ML / MLOps**: AWS SageMaker, SHAP, LightGBM, Scikit-learn  
-- **Infra / Etc.**: Docker, Python, Git, AWS (IAM, Secrets Manager)  
+- **Infra / Etc.**: Docker, Python, Git, AWS 
+
+
 
