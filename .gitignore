@@ -10,6 +10,7 @@ logs/
 __pycache__
 
 
+./streamlit/gold_dashboard.py
 
 spark/data/sink/
 spark/data/checkpoints/

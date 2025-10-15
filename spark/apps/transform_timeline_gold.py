@@ -46,7 +46,7 @@ def transform_gold_time(spark, input_path, output_path):
         .repartition("matchId")
         .write
         .mode("append")
-        .partitionBy("matchId")   # 경로 파티션
+        .partitionBy("matchId")  
         .parquet(output_path))
 
 if __name__ == "__main__":
